@@ -8,67 +8,58 @@ import statistics
 import requests
 from datetime import datetime
 
-# 1. 웹 페이지 기본 레이아웃 및 고급 폰트 설정 (Poppins, Lato)
+# 1. 웹 페이지 기본 레이아웃 및 심플 고급 폰트 설정
 st.set_page_config(
-    page_title="LOTTO AI PLATFORM v8.0", 
-    page_icon="💎", 
+    page_title="LOTTO AI PLATFORM v8.5", 
+    page_icon="🧠", 
     layout="centered"
 )
 
-# 고급 CSS 주입 (컨설팅 보고서 스타일 테마)
+# 미니멀리즘 타이포그래피 스타일 주입
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Lato:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
+    html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; color: #1e293b; }
     
-    html, body, [class*="css"] { font-family: 'Lato', sans-serif; color: #1e293b; }
-    h1, h2, h3 { font-family: 'Poppins', sans-serif; font-weight: 700; color: #001f3f; }
-    
-    .stButton>button {
-        background: linear-gradient(90deg, #001f3f 0%, #0056b3 100%);
-        color: white; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600;
-        transition: all 0.3s;
+    /* 숫자 강조용 스타일 */
+    .lotto-text-suit {
+        font-size: 24px;
+        font-weight: 900;
+        letter-spacing: 3px;
+        color: #0f172a;
+        margin: 15px 0;
+        padding: 8px 12px;
+        background-color: #f8fafc;
+        border-radius: 6px;
+        display: inline-block;
     }
-    .stButton>button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    
-    .premium-card {
-        background-color: #f8fafc; border-radius: 16px; border-left: 8px solid #0056b3;
-        padding: 30px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    .metric-bold {
+        font-weight: 700;
+        color: #0f172a;
     }
-    .data-label { font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-    .data-value { font-size: 20px; font-weight: 700; color: #001f3f; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# [NEW] 로또 공 스타일 렌더링 엔진 (각 공 밑에 번호 텍스트 개별 정렬 버전)
-def render_lotto_balls(numbers):
-    ball_htmls = []
-    for n in sorted(numbers):
-        if n <= 10:
-            bg = "linear-gradient(135deg, #fbc02d, #f9a825)" # 황금색
-        elif n <= 20:
-            bg = "linear-gradient(135deg, #1e88e5, #1565c0)" # 파란색
-        elif n <= 30:
-            bg = "linear-gradient(135deg, #e53935, #c62828)" # 빨간색
-        elif n <= 40:
-            bg = "linear-gradient(135deg, #78909c, #455a64)" # 회색
-        else:
-            bg = "linear-gradient(135deg, #43a047, #2e7d32)" # 초록색
-            
-        # 개별 공과 밑의 텍스트 숫자를 세트로 묶어서 정렬하는 세련된 Flexbox 컴포넌트
-        ball_htmls.append(
-            f'<div style="display: flex; flex-direction: column; align-items: center; margin-right: 15px;">'
-            f'  <div style="width: 48px; height: 48px; line-height: 48px; background: {bg}; color: white; '
-            f'              font-size: 19px; font-weight: bold; text-align: center; border-radius: 50%; '
-            f'              box-shadow: 0 4px 6px rgba(0,0,0,0.15), inset -3px -3px 6px rgba(0,0,0,0.2);">'
-            f'    {n:02d}'
-            f'  </div>'
-            f'  <div style="margin-top: 8px; font-family: \'Poppins\', sans-serif; font-size: 16px; font-weight: 700; color: #334155;">'
-            f'    {n}'
-            f'  </div>'
-            f'</div>'
-        )
-        
-    return f'<div style="display: flex; align-items: center; margin: 15px 0 25px 0;">{"".join(ball_htmls)}</div>'
+# 고급 데이터 분석용 헬퍼 함수
+def calculate_ac_value(nums):
+    """산술적 복잡도(AC) 계산: 번호들 간의 차이값들의 고유 개수 - 5"""
+    sorted_nums = sorted(nums)
+    diffs = set()
+    for i in range(len(sorted_nums)):
+        for j in range(i + 1, len(sorted_nums)):
+            diffs.add(sorted_nums[j] - sorted_nums[i])
+    return len(diffs) - 5
+
+def count_prime_numbers(nums):
+    """조합 내 소수의 개수 카운트"""
+    primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43}
+    return len([x for x in nums if x in primes])
+
+def calculate_high_low_ratio(nums):
+    """고저 비율 계산 (기준값 23)"""
+    low_cnt = len([x for x in nums if x <= 22])
+    high_cnt = 6 - low_cnt
+    return f"{low_cnt}:{high_cnt}"
 
 # 동행복권 공식 API 연동 자동 최신화 엔진
 def sync_lotto_dataset(filename="lotto_history.csv"):
@@ -238,8 +229,8 @@ def compute_overdue_days(df_input):
     return overdue
 
 # 메인 헤더 구성
-st.title("💎 LOTTO INTELLIGENCE PLATFORM v8.0")
-st.markdown("##### Strategic Analysis & Premium Human Interface")
+st.title("🧠 LOTTO INTELLIGENCE PLATFORM v8.5")
+st.caption("텍스트 미니멀리즘 가독성 튜닝 및 3대 인텔리전스 필터(AC값·소수·고저) 도입")
 
 csv_filename = "lotto_history.csv"
 df = None
@@ -267,7 +258,7 @@ if df is not None:
 
     tab1, tab2, tab3, tab4 = st.tabs(["🏆 AI 추천 센터", "❤️ 번호 건강도", "⚠️ 위험도 & 독식 분석", "🧬 패턴 연구소"])
 
-    # 탭 1: AI 추천 센터 (고급 카드 레이아웃 및 텍스트 하단 배치 적용)
+    # 탭 1: AI 추천 센터 (볼드 텍스트 베이스 가독성 업그레이드)
     with tab1:
         st.subheader("🏆 AI 추천 센터 프리미엄")
         col1, col2 = st.columns([2, 1])
@@ -302,8 +293,15 @@ if df is not None:
                     q_score = calculate_quality_score(nums)
                     r_score, reasons = calculate_risk_matrix(nums, popular_numbers)
                     m_score = 100 - r_score
+                    
+                    # 새로운 통계치 산출
+                    ac_val = calculate_ac_value(nums)
+                    prime_cnt = count_prime_numbers(nums)
+                    hl_ratio = calculate_high_low_ratio(nums)
+                    
                     evaluated_pool.append({
-                        "numbers": nums, "quality": q_score, "risk": r_score, "monopoly": m_score, "reasons": reasons
+                        "numbers": nums, "quality": q_score, "risk": r_score, "monopoly": m_score, "reasons": reasons,
+                        "ac": ac_val, "prime": prime_cnt, "high_low": hl_ratio
                     })
                     
                 top_100 = sorted(evaluated_pool, key=lambda x: x["quality"], reverse=True)[:100]
@@ -317,39 +315,38 @@ if df is not None:
                     grade = convert_score_to_s_grade(item["quality"])
                     stars = "★" * max(1, round(item["monopoly"] / 20))
                     report_buffer += f"   🥇 [최적 추천 조합 제 {idx}위]\n   👉  조합 번호 : [ {num_str} ]\n   -------------------------------------------------------\n"
-                    report_buffer += f"   ▫️ 종합 평정 등급 : {grade:<5} | ▫️ 분석 품질 점수 : {item['quality']}점\n   ▫️ 구조적 위험도  : {item['risk']:<5} | ▫️ 독식 가능 지수 : {item['monopoly']}점 ({stars})\n   ▫️ 세부 리스크 프로파일 디텍션:\n"
+                    report_buffer += f"   ▫️ 종합 평정 등급 : {grade:<5} | ▫️ 분석 품질 점수 : {item['quality']}점\n"
+                    report_buffer += f"   ▫️ 산술 복잡도(AC) : {item['ac']}  | ▫️ 포함 소수 개수 : {item['prime']}개 | ▫️ 고저 비율 : {item['high_low']}\n"
+                    report_buffer += f"   ▫️ 구조적 위험도  : {item['risk']:<5} | ▫️ 독식 가능 지수 : {item['monopoly']}점 ({stars})\n   ▫️ 세부 리스크 프로파일 디텍션:\n"
                     for r in item["reasons"]: report_buffer += f"     - {r}\n"
                     report_buffer += "=========================================================\n"
                 st.session_state.web_report = report_buffer
                 st.rerun()
 
         if st.session_state.top5_combinations:
-            st.markdown("### 🔮 AI 최적 추천 스루풋 (TOP 5)")
+            st.markdown("### 🔮 AI 최적 추천 조합 (TOP 5)")
             for idx, item in enumerate(st.session_state.top5_combinations, 1):
                 grade = convert_score_to_s_grade(item["quality"])
                 stars = "★" * max(1, round(item["monopoly"] / 20))
                 
-                # 컨설팅 스타일의 세련된 프리미엄 카드 UI 출력
-                st.markdown(f"""
-                <div class="premium-card">
-                    <div style="font-size: 22px; font-weight: 700; margin-bottom: 20px; color:#001f3f;">🥇 RANK #{idx} 추천 조합 (종합 평정 등급: {grade})</div>
-                    {render_lotto_balls(item['numbers'])}
-                    <div style="display: flex; gap: 50px; margin-top: 5px;">
-                        <div><div class="data-label">분석 품질</div><div class="data-value">{item['quality']}점 / 100</div></div>
-                        <div><div class="data-label">독식 가능성</div><div class="data-value">{item['monopoly']}점 ({stars})</div></div>
-                        <div><div class="data-label">위험도 스코어</div><div class="data-value">{item['risk']}점</div></div>
-                    </div>
-                    <div style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                        <div class="data-label">리스크 프로파일 디텍션</div>
-                        <div style="font-size: 15px; font-weight: 600; color:#475569; margin-top:5px;">{" / ".join(item['reasons'])}</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                # 굵기와 크기 위주로 텍스트 가독성을 최대로 높인 심플 레이아웃
+                with st.expander(f"🥇 제 {idx}순위 추천 조합  |  평정 등급: {grade} (품질: {item['quality']}점)", expanded=True):
+                    num_formatted = " &nbsp;&nbsp; ".join(f"{n:02d}" for n in item["numbers"])
+                    st.markdown(f'<div class="lotto-text-suit">{num_formatted}</div>', unsafe_allow_html=True)
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.markdown(f"**🔢 산술 복잡도(AC):** <span class='metric-bold'>{item['ac']}</span> (추천: 7~9)", unsafe_allow_html=True)
+                    c2.markdown(f"**🧬 포함 소수 개수:** <span class='metric-bold'>{item['prime']}개</span>", unsafe_allow_html=True)
+                    c3.markdown(f"**📈 고저 비율 (L:H):** <span class='metric-bold'>{item['high_low']}</span>", unsafe_allow_html=True)
+                    
+                    c4, c5 = st.columns(2)
+                    c4.markdown(f"**🟢 독식 가능 지수:** {item['monopoly']}점 ({stars})")
+                    c5.markdown(f"**🔴 구조적 위험도:** {item['risk']}점")
             st.markdown("---")
             st.markdown("📂 **텍스트 리포트 원본 백업**")
             st.code(st.session_state.web_report, language="text")
         else:
-            st.info("시뮬레이션 가동 버튼을 누르면 정밀 분석 필터를 거친 고해상도 디자인 결과물이 활성화됩니다.")
+            st.info("시뮬레이션 가동 버튼을 누르면 인텔리전스 필터와 상세 통계가 결합된 텍스트 기반 추천 데이터가 활성화됩니다.")
 
     # 탭 2: 번호 건강도 시스템
     with tab2:
@@ -393,7 +390,7 @@ if df is not None:
         top_20_health = sorted(health_registry, key=lambda x: x["raw_h"], reverse=True)[:20]
         st.table(pd.DataFrame(top_20_health).drop(columns=["raw_h"]))
 
-    # 탭 3: 위험도 및 독식 분석 (수동 검증 창도 동일 디자인 적용)
+    # 탭 3: 위험도 및 독식 분석 (수동 검증 창)
     with tab3:
         st.subheader("🧪 수동 입력 조합 리스크 인스펙터")
         custom_input = st.text_input("검증 번호 입력 (공백 구분 6개):", value="4 11 19 28 37 44")
@@ -410,7 +407,8 @@ if df is not None:
                     stars = "★" * max(1, round(m_score / 20))
                     
                     st.markdown("### 🎯 대상 검증 조합")
-                    st.markdown(render_lotto_balls(nums), unsafe_allow_html=True)
+                    num_formatted_custom = " &nbsp;&nbsp; ".join(f"{n:02d}" for n in nums)
+                    st.markdown(f'<div class="lotto-text-suit">{num_formatted_custom}</div>', unsafe_allow_html=True)
                     
                     c_risk, c_mono, c_qual = st.columns(3)
                     c_risk.metric("🔴 최종 판정 위험도", f"{r_score} 점 / 100")
