@@ -10,26 +10,68 @@ from datetime import datetime
 
 # 1. 웹 페이지 기본 레이아웃 셋업
 st.set_page_config(
-    page_title="로또 AI 인텔리전스 플랫폼 v6.5",
+    page_title="로또 AI 인텔리전스 플랫폼 v7.0",
     page_icon="🧠",
     layout="centered"
 )
 
-# [NEW] 동행복권 공식 API 연동 자동 최신화 엔진
+# [NEW] 로또 공 스타일 렌더링 엔진 (CSS 포함)
+def render_lotto_balls(numbers):
+    # 로또 공 개별 디자인 및 색상 맵핑
+    ball_styles = ""
+    ball_htmls = []
+    
+    for n in sorted(numbers):
+        if n <= 10:
+            bg_color = "linear-gradient(135deg, #fbc02d, #f9a825)" # 노란색
+            text_color = "#ffffff"
+        elif n <= 20:
+            bg_color = "linear-gradient(135deg, #1e88e5, #1565c0)" # 파란색
+            text_color = "#ffffff"
+        elif n <= 30:
+            bg_color = "linear-gradient(135deg, #e53935, #c62828)" # 빨간색
+            text_color = "#ffffff"
+        elif n <= 40:
+            bg_color = "linear-gradient(135deg, #78909c, #455a64)" # 회색
+            text_color = "#ffffff"
+        else:
+            bg_color = "linear-gradient(135deg, #43a047, #2e7d32)" # 초록색
+            text_color = "#ffffff"
+            
+        ball_htmls.append(
+            f'<div style="'
+            f'display: inline-block; '
+            f'width: 45px; '
+            f'height: 45px; '
+            f'line-height: 45px; '
+            f'background: {bg_color}; '
+            f'color: {text_color}; '
+            f'font-family: \'Arial\', sans-serif; '
+            f'font-size: 18px; '
+            f'font-weight: bold; '
+            f'text-align: center; '
+            f'border-radius: 50%; '
+            f'margin-right: 10px; '
+            f'box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.15), inset -3px -3px 6px rgba(0,0,0,0.2);'
+            f'">{n:02d}</div>'
+        )
+        
+    container_html = f'<div style="display: flex; align-items: center; margin: 15px 0;">{"".join(ball_htmls)}</div>'
+    return container_html
+
+# 동행복권 공식 API 연동 자동 최신화 엔진
 def sync_lotto_dataset(filename="lotto_history.csv"):
     if not os.path.exists(filename):
         return None, "파일이 존재하지 않습니다."
         
     try:
         df_local = pd.read_csv(filename)
-        # 필수 컬럼 존재 여부 확인 및 정렬
         if '회차' not in df_local.columns:
             return df_local, "CSV 파일에 '회차' 컬럼이 없습니다."
             
         df_local = df_local.sort_values(by='회차').reset_index(drop=True)
         last_drawn_idx = int(df_local['회차'].iloc[-1])
         
-        # 로또 기준일 (852회차 추첨일: 2019-04-06)을 기준으로 현재 예상 회차 계산
         base_date = datetime(2019, 4, 6)
         base_idx = 852
         now = datetime.now()
@@ -37,14 +79,12 @@ def sync_lotto_dataset(filename="lotto_history.csv"):
         weeks_diff = (now - base_date).days // 7
         expected_current_idx = base_idx + weeks_diff
         
-        # 토요일 저녁 8시 45분 추첨 및 데이터 반영 시간을 고려한 안전장치
         if now.weekday() == 5 and now.hour < 21:
             expected_current_idx -= 1
             
         updated_count = 0
         new_rows = []
         
-        # 누락된 회차가 있다면 공식 API로 연속 호출 및 캐싱
         with st.spinner("🔄 동행복권 공식 API로부터 최신 당첨 데이터를 동기화 중입니다..."):
             for target_idx in range(last_drawn_idx + 1, expected_current_idx + 1):
                 api_url = f"https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo={target_idx}"
@@ -66,7 +106,6 @@ def sync_lotto_dataset(filename="lotto_history.csv"):
                         })
                         updated_count += 1
                     else:
-                        # 아직 추첨 데이터가 동행복권 서버에 업데이트되지 않은 경우 중단
                         break
                 else:
                     break
@@ -74,7 +113,6 @@ def sync_lotto_dataset(filename="lotto_history.csv"):
         if updated_count > 0:
             df_new = pd.DataFrame(new_rows)
             df_combined = pd.concat([df_local, df_new], ignore_index=True)
-            # 최신화된 데이터를 로컬 및 서버 환경에 즉시 저장
             df_combined.to_csv(filename, index=False)
             return df_combined, f"🚀 성공적으로 {updated_count}개의 최신 회차 데이터를 동기화했습니다! (최신: {df_combined['회차'].iloc[-1]}회)"
             
@@ -83,7 +121,6 @@ def sync_lotto_dataset(filename="lotto_history.csv"):
     except Exception as e:
         return pd.read_csv(filename) if os.path.exists(filename) else None, f"⚠️ 동기화 중 일시적 지연 발생: {str(e)}"
 
-# 2. 고속 성능을 위한 인메모리 데이터 캐싱 엔진
 @st.cache_data
 def bootstrap_data_engine(df_input):
     number_cols = ['번호1', '번호2', '번호3', '번호4', '번호5', '번호6']
@@ -100,7 +137,7 @@ def bootstrap_data_engine(df_input):
     triple_dict = dict(Counter(triple_list))
     return counter, pair_dict, triple_dict
 
-# 3. CORE MATH & ENGINE CORES (기존 안정 로직 보존)
+# CORE MATH & ENGINE CORES
 def calculate_quality_score(nums):
     score = 0
     nums = sorted(nums)
@@ -195,11 +232,10 @@ def compute_overdue_days(df_input):
                 overdue[num] = latest - (idx + 1)
     return overdue
 
-# 4. 메인 플랫폼 헤더 구성
-st.title("🧠 LOTTO INTELLIGENCE PLATFORM v6.5")
-st.caption("공식 API 자동 동기화 엔진 기반 조합 분석 시뮬레이터")
+# 메인 플랫폼 헤더 구성
+st.title("🧠 LOTTO INTELLIGENCE PLATFORM v7.0")
+st.caption("자동 최신화 엔진 및 리얼 로또 공 시각화 인터페이스 탑재")
 
-# 5. 데이터 자동 최신화 엔진 가동 파트
 csv_filename = "lotto_history.csv"
 df = None
 
@@ -215,17 +251,19 @@ else:
         df, sync_msg = sync_lotto_dataset(csv_filename)
         st.sidebar.info(sync_msg)
 
-# 데이터가 성공적으로 확보되었을 때 인텔리전스 레이어 활성화
 if df is not None:
     popular_numbers = {7, 10, 11, 17, 20, 21, 27, 30, 33, 40}
     counter, pair_dict, triple_dict = bootstrap_data_engine(df)
     
+    # 세션 상태 관리 (최천 추천 조합 리스트 저장용)
+    if 'top5_combinations' not in st.session_state:
+        st.session_state.top5_combinations = []
     if 'web_report' not in st.session_state:
         st.session_state.web_report = ""
 
     tab1, tab2, tab3, tab4 = st.tabs(["🏆 AI 추천 센터", "❤️ 번호 건강도", "⚠️ 위험도 & 독식 분석", "🧬 패턴 연구소"])
 
-    # VIEWPORT 1: AI 추천 센터
+    # VIEWPORT 1: AI 추천 센터 (로또 공 시각화 뷰 적용)
     with tab1:
         st.subheader("🏆 AI 추천 센터 프리미엄")
         col1, col2 = st.columns([2, 1])
@@ -269,6 +307,7 @@ if df is not None:
                     
                 top_100 = sorted(evaluated_pool, key=lambda x: x["quality"], reverse=True)[:100]
                 final_top5 = sorted(top_100, key=lambda x: (x["quality"], x["monopoly"]), reverse=True)[:5]
+                st.session_state.top5_combinations = final_top5
                 
                 report_buffer = f"🏆 [AI 추천 센터 프리미엄 결과 리포트 - 기준 데이터: 총 {len(df)}회차]\n"
                 report_buffer += "=========================================================\n"
@@ -289,10 +328,25 @@ if df is not None:
                 st.session_state.web_report = report_buffer
                 st.rerun()
 
-        if st.session_state.web_report:
+        # [UPGRADE] 상단에 직관적인 로또 공 그래픽 출력 레이어
+        if st.session_state.top5_combinations:
+            st.markdown("### 🔮 AI 최적 추천 스루풋 (TOP 5)")
+            for idx, item in enumerate(st.session_state.top5_combinations, 1):
+                grade = convert_score_to_s_grade(item["quality"])
+                stars = "★" * max(1, round(item["monopoly"] / 20))
+                
+                with st.expander(f"🥇 제 {idx}순위 조합 평정 등급: {grade} (품질: {item['quality']}점)", expanded=True):
+                    # 여기에 컬러 공 렌더링 호출
+                    st.markdown(render_lotto_balls(item["numbers"]), unsafe_allow_html=True)
+                    
+                    c_col1, c_col2 = st.columns(2)
+                    c_col1.write(f"**독식 가능 지수:** {item['monopoly']}점 ({stars})")
+                    c_col2.write(f"**위험도 필터:** {item['risk']}점")
+            st.markdown("---")
+            st.markdown("📂 **텍스트 리포트 원본 백업**")
             st.code(st.session_state.web_report, language="text")
         else:
-            st.info("시뮬레이션 버튼을 누르면 동기화된 최신 링키지 기반 분석 결과가 렌더링됩니다.")
+            st.info("시뮬레이션 가동 버튼을 누르면 정밀 분석 필터를 거친 컬러 로또 공 세트가 활성화됩니다.")
 
     # VIEWPORT 2: 번호 건강도 시스템
     with tab2:
@@ -336,7 +390,7 @@ if df is not None:
         top_20_health = sorted(health_registry, key=lambda x: x["raw_h"], reverse=True)[:20]
         st.table(pd.DataFrame(top_20_health).drop(columns=["raw_h"]))
 
-    # VIEWPORT 3: 위험도 및 독식 분석 레이어
+    # VIEWPORT 3: 위험도 및 독식 분석 레이어 (수동 입력 필터에도 공 디자인 적용)
     with tab3:
         st.subheader("🧪 수동 입력 조합 리스크 인스펙터")
         custom_input = st.text_input("검증 번호 입력 (공백 구분 6개):", value="4 11 19 28 37 44")
@@ -352,7 +406,10 @@ if df is not None:
                     q_score = calculate_quality_score(nums)
                     stars = "★" * max(1, round(m_score / 20))
                     
-                    st.markdown(f"### 🎯 대상 검증 조합 : `{nums}`")
+                    st.markdown("### 🎯 대상 검증 조합")
+                    # 내가 입력한 수동 번호도 예쁜 컬러 공으로 즉시 시각화!
+                    st.markdown(render_lotto_balls(nums), unsafe_allow_html=True)
+                    
                     c_risk, c_mono, c_qual = st.columns(3)
                     c_risk.metric("🔴 최종 판정 위험도", f"{r_score} 점 / 100")
                     c_mono.metric("🟢 독식 가능성 점수", f"{m_score} 점", delta=stars, delta_color="off")
