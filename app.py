@@ -10,7 +10,7 @@ from datetime import datetime
 
 # 1. 웹 페이지 기본 레이아웃 및 심플 고급 폰트 설정
 st.set_page_config(
-    page_title="LOTTO AI PLATFORM v8.5", 
+    page_title="LOTTO AI PLATFORM v8.6", 
     page_icon="🧠", 
     layout="centered"
 )
@@ -229,8 +229,8 @@ def compute_overdue_days(df_input):
     return overdue
 
 # 메인 헤더 구성
-st.title("🧠 LOTTO INTELLIGENCE PLATFORM v8.5")
-st.caption("텍스트 미니멀리즘 가독성 튜닝 및 3대 인텔리전스 필터(AC값·소수·고저) 도입")
+st.title("🧠 LOTTO INTELLIGENCE PLATFORM v8.6")
+st.caption("텍스트 미니멀리즘 가독성 튜닝 및 캐시 무결성 시스템 빌드 완료")
 
 csv_filename = "lotto_history.csv"
 df = None
@@ -251,6 +251,12 @@ if df is not None:
     popular_numbers = {7, 10, 11, 17, 20, 21, 27, 30, 33, 40}
     counter, pair_dict, triple_dict = bootstrap_data_engine(df)
     
+    # [안전장치] 만약 기존 세션 데이터에 'ac' 필드가 누락되어 있다면 강제로 초기화하여 KeyError 방지
+    if 'top5_combinations' in st.session_state and st.session_state.top5_combinations:
+        if 'ac' not in st.session_state.top5_combinations[0]:
+            st.session_state.top5_combinations = []
+            st.session_state.web_report = ""
+
     if 'top5_combinations' not in st.session_state:
         st.session_state.top5_combinations = []
     if 'web_report' not in st.session_state:
@@ -258,7 +264,7 @@ if df is not None:
 
     tab1, tab2, tab3, tab4 = st.tabs(["🏆 AI 추천 센터", "❤️ 번호 건강도", "⚠️ 위험도 & 독식 분석", "🧬 패턴 연구소"])
 
-    # 탭 1: AI 추천 센터 (볼드 텍스트 베이스 가독성 업그레이드)
+    # 탭 1: AI 추천 센터
     with tab1:
         st.subheader("🏆 AI 추천 센터 프리미엄")
         col1, col2 = st.columns([2, 1])
@@ -294,7 +300,7 @@ if df is not None:
                     r_score, reasons = calculate_risk_matrix(nums, popular_numbers)
                     m_score = 100 - r_score
                     
-                    # 새로운 통계치 산출
+                    # 새로운 프리미엄 통계 데이터 산출
                     ac_val = calculate_ac_value(nums)
                     prime_cnt = count_prime_numbers(nums)
                     hl_ratio = calculate_high_low_ratio(nums)
@@ -329,15 +335,19 @@ if df is not None:
                 grade = convert_score_to_s_grade(item["quality"])
                 stars = "★" * max(1, round(item["monopoly"] / 20))
                 
-                # 굵기와 크기 위주로 텍스트 가독성을 최대로 높인 심플 레이아웃
+                # KeyError에 대비한 .get() 예외 처리 안전망 적용
+                ac_display = item.get("ac", calculate_ac_value(item["numbers"]))
+                prime_display = item.get("prime", count_prime_numbers(item["numbers"]))
+                hl_display = item.get("high_low", calculate_high_low_ratio(item["numbers"]))
+                
                 with st.expander(f"🥇 제 {idx}순위 추천 조합  |  평정 등급: {grade} (품질: {item['quality']}점)", expanded=True):
                     num_formatted = " &nbsp;&nbsp; ".join(f"{n:02d}" for n in item["numbers"])
                     st.markdown(f'<div class="lotto-text-suit">{num_formatted}</div>', unsafe_allow_html=True)
                     
                     c1, c2, c3 = st.columns(3)
-                    c1.markdown(f"**🔢 산술 복잡도(AC):** <span class='metric-bold'>{item['ac']}</span> (추천: 7~9)", unsafe_allow_html=True)
-                    c2.markdown(f"**🧬 포함 소수 개수:** <span class='metric-bold'>{item['prime']}개</span>", unsafe_allow_html=True)
-                    c3.markdown(f"**📈 고저 비율 (L:H):** <span class='metric-bold'>{item['high_low']}</span>", unsafe_allow_html=True)
+                    c1.markdown(f"**🔢 산술 복잡도(AC):** <span class='metric-bold'>{ac_display}</span> (추천: 7~9)", unsafe_allow_html=True)
+                    c2.markdown(f"**🧬 포함 소수 개수:** <span class='metric-bold'>{prime_display}개</span>", unsafe_allow_html=True)
+                    c3.markdown(f"**📈 고저 비율 (L:H):** <span class='metric-bold'>{hl_display}</span>", unsafe_allow_html=True)
                     
                     c4, c5 = st.columns(2)
                     c4.markdown(f"**🟢 독식 가능 지수:** {item['monopoly']}점 ({stars})")
