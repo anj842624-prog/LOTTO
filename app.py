@@ -10,7 +10,7 @@ from datetime import datetime
 
 # 1. 웹 페이지 기본 레이아웃 및 심플 고급 폰트 설정
 st.set_page_config(
-    page_title="LOTTO AI PLATFORM v8.6", 
+    page_title="LOTTO AI PLATFORM", 
     page_icon="🧠", 
     layout="centered"
 )
@@ -33,33 +33,8 @@ st.markdown("""
         border-radius: 6px;
         display: inline-block;
     }
-    .metric-bold {
-        font-weight: 700;
-        color: #0f172a;
-    }
     </style>
     """, unsafe_allow_html=True)
-
-# 고급 데이터 분석용 헬퍼 함수
-def calculate_ac_value(nums):
-    """산술적 복잡도(AC) 계산: 번호들 간의 차이값들의 고유 개수 - 5"""
-    sorted_nums = sorted(nums)
-    diffs = set()
-    for i in range(len(sorted_nums)):
-        for j in range(i + 1, len(sorted_nums)):
-            diffs.add(sorted_nums[j] - sorted_nums[i])
-    return len(diffs) - 5
-
-def count_prime_numbers(nums):
-    """조합 내 소수의 개수 카운트"""
-    primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43}
-    return len([x for x in nums if x in primes])
-
-def calculate_high_low_ratio(nums):
-    """고저 비율 계산 (기준값 23)"""
-    low_cnt = len([x for x in nums if x <= 22])
-    high_cnt = 6 - low_cnt
-    return f"{low_cnt}:{high_cnt}"
 
 # 동행복권 공식 API 연동 자동 최신화 엔진
 def sync_lotto_dataset(filename="lotto_history.csv"):
@@ -229,8 +204,8 @@ def compute_overdue_days(df_input):
     return overdue
 
 # 메인 헤더 구성
-st.title("🧠 LOTTO INTELLIGENCE PLATFORM v8.6")
-st.caption("텍스트 미니멀리즘 가독성 튜닝 및 캐시 무결성 시스템 빌드 완료")
+st.title("🧠 LOTTO INTELLIGENCE PLATFORM")
+st.caption("공식 API 자동 동기화 엔진 기반 조합 분석 시뮬레이터")
 
 csv_filename = "lotto_history.csv"
 df = None
@@ -251,12 +226,6 @@ if df is not None:
     popular_numbers = {7, 10, 11, 17, 20, 21, 27, 30, 33, 40}
     counter, pair_dict, triple_dict = bootstrap_data_engine(df)
     
-    # [안전장치] 만약 기존 세션 데이터에 'ac' 필드가 누락되어 있다면 강제로 초기화하여 KeyError 방지
-    if 'top5_combinations' in st.session_state and st.session_state.top5_combinations:
-        if 'ac' not in st.session_state.top5_combinations[0]:
-            st.session_state.top5_combinations = []
-            st.session_state.web_report = ""
-
     if 'top5_combinations' not in st.session_state:
         st.session_state.top5_combinations = []
     if 'web_report' not in st.session_state:
@@ -280,7 +249,7 @@ if df is not None:
                 st.button("💾 분석 결과 리포트 저장", disabled=True, use_container_width=True)
 
         if trigger:
-            with st.spinner("🚀 고밀도 모의 세트 생성 및 프리미엄 인텔리전스 필터링 중..."):
+            with st.spinner("🚀 고밀도 모의 세트 생성 및 필터링 중..."):
                 number_cols = ['번호1', '번호2', '번호3', '번호4', '번호5', '번호6']
                 recent_30 = df.tail(30)
                 ex_counter = Counter()
@@ -300,14 +269,8 @@ if df is not None:
                     r_score, reasons = calculate_risk_matrix(nums, popular_numbers)
                     m_score = 100 - r_score
                     
-                    # 새로운 프리미엄 통계 데이터 산출
-                    ac_val = calculate_ac_value(nums)
-                    prime_cnt = count_prime_numbers(nums)
-                    hl_ratio = calculate_high_low_ratio(nums)
-                    
                     evaluated_pool.append({
-                        "numbers": nums, "quality": q_score, "risk": r_score, "monopoly": m_score, "reasons": reasons,
-                        "ac": ac_val, "prime": prime_cnt, "high_low": hl_ratio
+                        "numbers": nums, "quality": q_score, "risk": r_score, "monopoly": m_score, "reasons": reasons
                     })
                     
                 top_100 = sorted(evaluated_pool, key=lambda x: x["quality"], reverse=True)[:100]
@@ -322,7 +285,6 @@ if df is not None:
                     stars = "★" * max(1, round(item["monopoly"] / 20))
                     report_buffer += f"   🥇 [최적 추천 조합 제 {idx}위]\n   👉  조합 번호 : [ {num_str} ]\n   -------------------------------------------------------\n"
                     report_buffer += f"   ▫️ 종합 평정 등급 : {grade:<5} | ▫️ 분석 품질 점수 : {item['quality']}점\n"
-                    report_buffer += f"   ▫️ 산술 복잡도(AC) : {item['ac']}  | ▫️ 포함 소수 개수 : {item['prime']}개 | ▫️ 고저 비율 : {item['high_low']}\n"
                     report_buffer += f"   ▫️ 구조적 위험도  : {item['risk']:<5} | ▫️ 독식 가능 지수 : {item['monopoly']}점 ({stars})\n   ▫️ 세부 리스크 프로파일 디텍션:\n"
                     for r in item["reasons"]: report_buffer += f"     - {r}\n"
                     report_buffer += "=========================================================\n"
@@ -335,28 +297,18 @@ if df is not None:
                 grade = convert_score_to_s_grade(item["quality"])
                 stars = "★" * max(1, round(item["monopoly"] / 20))
                 
-                # KeyError에 대비한 .get() 예외 처리 안전망 적용
-                ac_display = item.get("ac", calculate_ac_value(item["numbers"]))
-                prime_display = item.get("prime", count_prime_numbers(item["numbers"]))
-                hl_display = item.get("high_low", calculate_high_low_ratio(item["numbers"]))
-                
                 with st.expander(f"🥇 제 {idx}순위 추천 조합  |  평정 등급: {grade} (품질: {item['quality']}점)", expanded=True):
                     num_formatted = " &nbsp;&nbsp; ".join(f"{n:02d}" for n in item["numbers"])
                     st.markdown(f'<div class="lotto-text-suit">{num_formatted}</div>', unsafe_allow_html=True)
                     
-                    c1, c2, c3 = st.columns(3)
-                    c1.markdown(f"**🔢 산술 복잡도(AC):** <span class='metric-bold'>{ac_display}</span> (추천: 7~9)", unsafe_allow_html=True)
-                    c2.markdown(f"**🧬 포함 소수 개수:** <span class='metric-bold'>{prime_display}개</span>", unsafe_allow_html=True)
-                    c3.markdown(f"**📈 고저 비율 (L:H):** <span class='metric-bold'>{hl_display}</span>", unsafe_allow_html=True)
-                    
-                    c4, c5 = st.columns(2)
-                    c4.markdown(f"**🟢 독식 가능 지수:** {item['monopoly']}점 ({stars})")
-                    c5.markdown(f"**🔴 구조적 위험도:** {item['risk']}점")
+                    c1, c2 = st.columns(2)
+                    c1.markdown(f"**🟢 독식 가능 지수:** {item['monopoly']}점 ({stars})")
+                    c2.markdown(f"**🔴 구조적 위험도:** {item['risk']}점")
             st.markdown("---")
             st.markdown("📂 **텍스트 리포트 원본 백업**")
             st.code(st.session_state.web_report, language="text")
         else:
-            st.info("시뮬레이션 가동 버튼을 누르면 인텔리전스 필터와 상세 통계가 결합된 텍스트 기반 추천 데이터가 활성화됩니다.")
+            st.info("시뮬레이션 가동 버튼을 누르면 분석 결과가 렌더링됩니다.")
 
     # 탭 2: 번호 건강도 시스템
     with tab2:
